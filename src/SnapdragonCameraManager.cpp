@@ -45,6 +45,9 @@ Snapdragon::CameraManager::CameraManager( Snapdragon::CameraParameters* params_p
   camera_config_ptr_     = &params_ptr->camera_config;
 
   camera_ptr_           = NULL;
+#ifdef QC_SOC_TARGET_APQ8096
+  camera_sub_ptr_       = NULL;
+#endif
   if( camera_config_ptr_->cam_type == CameraType::STEREO ) {
     preview_size_.width = camera_config_ptr_->pixel_width * 2;
   }
@@ -83,118 +86,137 @@ int32_t Snapdragon::CameraManager::Initialize(){
       printf( "ERROR: Cannot Find Camera Id for Type: %d\n", camera_config_ptr_->cam_type );
       return -1;
     }
-    int ret = camera::ICameraDevice::createInstance(cam_id, &camera_ptr_);
-    if (ret != 0) {
-      printf("ERROR: Could not open camera %d\n", cam_id);
-      return ret;
-    }
-    else {
-      printf("Opened camera %d Type: %d\n", cam_id, camera_config_ptr_->cam_type );
-    }
 
-    camera_ptr_->addListener(this);
-
-    ret = params_.init(camera_ptr_);
-    if (ret != 0) {
-      printf("ERROR: Failed to initialize camera parameters.\n");
-      camera::ICameraDevice::deleteInstance(&camera_ptr_);
-      return ret;
-    }
-
-    // Check desired FPS against supported FPS values
-    std::vector<camera::Range> preview_fps_ranges = params_.getSupportedPreviewFpsRanges();
-    int fps_index = -1;
-    for (unsigned int ii = 0; ii < preview_fps_ranges.size(); ++ii) {
-      printf("Preview FPS range %d: [ %d, %d ]\n",
-        ii, preview_fps_ranges[ii].min / 1000, preview_fps_ranges[ii].max / 1000);
-      if (preview_fps_ranges[ii].max / 1000 == camera_config_ptr_->fps) {
-        fps_index = static_cast<int>(ii);
-      }
-    }
-
-    // Check desired preview size against supported sizes
-    std::vector<camera::ImageSize> preview_sizes = params_.getSupportedPreviewSizes();
-    int psize_index = -1;
-    for (unsigned int ii = 0; ii < preview_sizes.size(); ++ii) {
-      printf("Preview size %d: [ %d x %d ]\n",
-        ii, preview_sizes[ii].width, preview_sizes[ii].height);
-      if (preview_sizes[ii].width == preview_size_.width &&
-          preview_sizes[ii].height == preview_size_.height) {
-        psize_index = static_cast<int>(ii);
-      }
-    }
-
-    // Print supported preview formats
-    // Default format is YUV
-    std::vector<std::string> preview_formats = params_.getSupportedPreviewFormats();
-    for (unsigned int ii = 0; ii < preview_formats.size(); ++ii) {
-      printf("Preview format %d: %s\n", ii, preview_formats[ii].c_str());
-    }
-
+    if (camera_config_ptr_->is_cam_master)
     {
-      std::lock_guard<std::mutex> lock( frame_mutex_ );
-
-      if (fps_index != -1)
-      {
-        printf("Setting FPS to %d\n", camera_config_ptr_->fps);
-        params_.setPreviewFpsRange(preview_fps_ranges[fps_index]);
+      int ret = camera::ICameraDevice::createInstance(cam_id, &camera_ptr_);
+      if (ret != 0) {
+        printf("ERROR: Could not open camera %d\n", cam_id);
+        return ret;
       }
-      else
-      {
-        printf("ERROR: Invalid FPS value of %d. Using camera default.\n",
-          camera_config_ptr_->fps);
+      else {
+        printf("Opened camera %d Type: %d\n", cam_id, camera_config_ptr_->cam_type );
       }
 
-      if (psize_index != -1)
-      {
-        printf("Setting preview size to %dx%d\n", preview_size_.width, preview_size_.height);
-        params_.setPreviewSize(preview_size_);
-      }
-      else
-      {
-        printf("ERROR: Invalid preview size of %dx%d. Using camera default.\n",
-          preview_size_.width, preview_size_.height);
+      camera_ptr_->addListener(this);
+
+      ret = params_.init(camera_ptr_);
+      if (ret != 0) {
+        printf("ERROR: Failed to initialize camera parameters.\n");
+        camera::ICameraDevice::deleteInstance(&camera_ptr_);
+        return ret;
       }
 
-      if( camera_config_ptr_->cam_format == CameraFormat::RAW_FORMAT )
+      // Check desired FPS against supported FPS values
+      std::vector<camera::Range> preview_fps_ranges = params_.getSupportedPreviewFpsRanges();
+      int fps_index = -1;
+      for (unsigned int ii = 0; ii < preview_fps_ranges.size(); ++ii) {
+        printf("Preview FPS range %d: [ %d, %d ]\n",
+            ii, preview_fps_ranges[ii].min / 1000, preview_fps_ranges[ii].max / 1000);
+        if (preview_fps_ranges[ii].max / 1000 == camera_config_ptr_->fps) {
+          fps_index = static_cast<int>(ii);
+        }
+      }
+
+      // Check desired preview size against supported sizes
+      std::vector<camera::ImageSize> preview_sizes = params_.getSupportedPreviewSizes();
+      int psize_index = -1;
+      for (unsigned int ii = 0; ii < preview_sizes.size(); ++ii) {
+        printf("Preview size %d: [ %d x %d ]\n",
+            ii, preview_sizes[ii].width, preview_sizes[ii].height);
+        if (preview_sizes[ii].width == preview_size_.width &&
+            preview_sizes[ii].height == preview_size_.height) {
+          psize_index = static_cast<int>(ii);
+        }
+      }
+
+      // Print supported preview formats
+      // Default format is YUV
+      std::vector<std::string> preview_formats = params_.getSupportedPreviewFormats();
+      for (unsigned int ii = 0; ii < preview_formats.size(); ++ii) {
+        printf("Preview format %d: %s\n", ii, preview_formats[ii].c_str());
+      }
+
       {
-        printf("Setting preview format to RAW_FORMAT\n");
-        params_.set( "preview-format", "bayer-rggb" );
-        params_.set( "picture-format", "bayer-mipi-10gbrg" );
-        params_.set( "raw-size", "640x480" );
+        std::lock_guard<std::mutex> lock( frame_mutex_ );
+
+        if (fps_index != -1)
+        {
+          printf("Setting FPS to %d\n", camera_config_ptr_->fps);
+          params_.setPreviewFpsRange(preview_fps_ranges[fps_index]);
+        }
+        else
+        {
+          printf("ERROR: Invalid FPS value of %d. Using camera default.\n",
+              camera_config_ptr_->fps);
+        }
+
+        if (psize_index != -1)
+        {
+          printf("Setting preview size to %dx%d\n", preview_size_.width, preview_size_.height);
+          params_.setPreviewSize(preview_size_);
+        }
+        else
+        {
+          printf("ERROR: Invalid preview size of %dx%d. Using camera default.\n",
+              preview_size_.width, preview_size_.height);
+        }
+
+        if( camera_config_ptr_->cam_format == CameraFormat::RAW_FORMAT )
+        {
+          printf("Setting preview format to RAW_FORMAT\n");
+          params_.set( "preview-format", "bayer-rggb" );
+          params_.set( "picture-format", "bayer-mipi-10gbrg" );
+          params_.set( "raw-size", "640x480" );
 #ifdef QC_SOC_TARGET_APQ8096
-        params_.setPreviewFormat(camera::FORMAT_RAW10);
+          params_.setPreviewFormat(camera::FORMAT_RAW10);
 #endif
-      }
-      else if( camera_config_ptr_->cam_format == CameraFormat::NV12_FORMAT )
-      {
-        printf("Setting preview format to NV12_FORMAT\n");
-        params_.set( "preview-format", "nv12" );
-      }
-      else
-      {
-        printf("Using default preview format of YUV_FORMAT\n");
-      }
+        }
+        else if( camera_config_ptr_->cam_format == CameraFormat::NV12_FORMAT )
+        {
+          printf("Setting preview format to NV12_FORMAT\n");
+          params_.set( "preview-format", "nv12" );
+        }
+        else
+        {
+          printf("Using default preview format of YUV_FORMAT\n");
+        }
 
 #ifdef QC_SOC_TARGET_APQ8074
-      char exposure_string[6];
-      sprintf(exposure_string,"%d", exposure_setting_);
-      char gain_string[6];
-      sprintf(gain_string,"%d", gain_setting_);
-      params_.set("qc-exposure-manual",exposure_string);
-      params_.set("qc-gain-manual",gain_string);
+        char exposure_string[6];
+        sprintf(exposure_string,"%d", exposure_setting_);
+        char gain_string[6];
+        sprintf(gain_string,"%d", gain_setting_);
+        params_.set("qc-exposure-manual",exposure_string);
+        params_.set("qc-gain-manual",gain_string);
 #endif
 #ifdef QC_SOC_TARGET_APQ8096
-      params_.setManualExposure(exposure_setting_);
-      params_.setManualGain(gain_setting_);
+        params_.setManualExposure(exposure_setting_);
+        params_.setManualGain(gain_setting_);
 #endif
 
-      // commit the camera parameters.
-      if (params_.commit() != 0)
-      {
-        printf("ERROR: Error setting initial camera params.\n");
+        // commit the camera parameters.
+        if (params_.commit() != 0)
+        {
+          printf("ERROR: Error setting initial camera params.\n");
+          return -1;
+        }
+      }
+    }
+    else
+    {
+#ifdef QC_SOC_TARGET_APQ8096
+      bool ret = camera::ICameraSubscriber::createInstance(cam_id, camera_sub_ptr_);
+
+      if (!ret) {
+        printf("ERROR: could not open camera subscriber for cam id %d\n", cam_id);
         return -1;
       }
+
+      camera_sub_ptr_->addListener(this);
+#else
+      printf("8074 does not support ICameraSubscriber");
+#endif
     }
 
     initialized_ = true;
@@ -218,18 +240,43 @@ int32_t Snapdragon::CameraManager::Terminate() {
     camera::ICameraDevice::deleteInstance(&camera_ptr_);
     camera_ptr_ = nullptr;
   }
+#ifdef QC_SOC_TARGET_APQ8096
+  if (camera_sub_ptr_ != nullptr) {
+    if (running_) {
+      Stop();
+    }
+    camera_sub_ptr_->removeListener(this);
+    camera::ICameraSubscriber::deleteInstance(camera_sub_ptr_);
+    camera_sub_ptr_ = nullptr;
+  }
+#endif
   return 0;
+
 }
 
 int32_t Snapdragon::CameraManager::Start() {
   if (initialized_) {
     if (!running_) {
-      int ret = camera_ptr_->startPreview();
-      if (ret == 0) {
-        running_ = true;
+      if (camera_config_ptr_->is_cam_master)
+      {
+        int ret = camera_ptr_->startPreview();
+        if (ret == 0) {
+          running_ = true;
+        }
+        else {
+          return ret;
+        }
       }
       else {
-        return ret;
+#ifdef QC_SOC_TARGET_APQ8096
+        if (camera_sub_ptr_->startPreview()) {
+          running_ = true;
+        }
+        else { return -1; }
+#else
+      printf("8074 does not support ICameraSubscriber");
+      return -1;
+#endif
       }
     }
     else {
@@ -246,7 +293,17 @@ int32_t Snapdragon::CameraManager::Start() {
 
 int32_t Snapdragon::CameraManager::Stop() {
   if( running_ ) {
-    camera_ptr_->stopPreview();
+    if (camera_config_ptr_->is_cam_master) {
+      camera_ptr_->stopPreview();
+    }
+    else {
+#ifdef QC_SOC_TARGET_APQ8096
+      camera_sub_ptr_->stopPreview();
+#else
+      printf("8074 does not support ICameraSubscriber");
+      return -1;
+#endif
+    }
   }
   running_ = false;
 
@@ -420,7 +477,12 @@ int32_t Snapdragon::CameraManager::GetImageData( int64_t frame_id,
   }
   //monocular image data
   else {
-    memcpy( image_data, reinterpret_cast<uint8_t*>( frame_queue_[frame_q_read_index_].frame_->data ), image_size_bytes_ );
+    if (camera_config_ptr_->is_cam_master) {
+      memcpy( image_data, reinterpret_cast<uint8_t*>( frame_queue_[frame_q_read_index_].frame_->data ), image_size_bytes_ );
+    }
+    else {
+      memcpy( image_data, reinterpret_cast<uint8_t*>( frame_queue_[frame_q_read_index_].data_ ), image_size_bytes_ );
+    }
   }
 
   return 0;
@@ -445,6 +507,16 @@ int32_t Snapdragon::CameraManager::GetExposureTimeUs(int64_t frame_id, float* ex
     return -1;
   }
   *exposure_time_us = static_cast<float>(frame_queue_[frame_q_read_index_].exposure_time_ns_)/1000.f;
+  return 0;
+}
+
+int32_t Snapdragon::CameraManager::GetExposureTime(int64_t frame_id, uint64_t* exposure_time_ns) {
+  std::lock_guard<std::mutex> lock( frame_mutex_ );
+  int32_t frame_id_return = FindFrameIndex(frame_id);
+  if (frame_id_return < 0) {
+    return -1;
+  }
+  *exposure_time_ns = frame_queue_[frame_q_read_index_].exposure_time_ns_;
   return 0;
 }
 
@@ -529,4 +601,79 @@ void Snapdragon::CameraManager::onVideoFrame(camera::ICameraFrame* frame)
   // Should only get here if video is requested, which is not supported
   printf("WARN: Got video frame!\n");
 }
+
+#ifdef QC_SOC_TARGET_APQ8096
+void Snapdragon::CameraManager::onError(camera::SUBSCRIBER_STATUS status)
+{
+  printf("ERROR: Camera error.\n");
+  if( running_ ) {
+    camera_sub_ptr_->stopPreview();
+  }
+  running_ = false;
+}
+
+void Snapdragon::CameraManager::onPreviewFrame(camera::ICameraSubscriberFrame* frame)
+{
+  static uint64_t cntr = 0;
+  if (frame->timeStamp != timestamp_last_nsecs_)
+  {
+    //increment the frameid;
+    int64_t old_frame_id = next_frame_id_;
+
+    //set the image_size bytes information.
+    image_size_bytes_ = frame->size;
+    if( camera_config_ptr_->cam_type == CameraType::STEREO ) {
+      image_size_bytes_ = image_size_bytes_ / 2;
+    }
+    next_frame_id_++;
+
+    //now add the frame to the queue.
+    if (image_size_bytes_ <= IMAGE_DATA_BUFFER_SIZE)
+    {
+      std::lock_guard<std::mutex> lock( frame_mutex_ );
+
+      // add the frame to the queue.
+      CameraFrameType new_frame;
+      new_frame.frame_id_ = next_frame_id_;
+      new_frame.timestamp_ = frame->timeStamp;
+      std::memcpy(new_frame.data_, frame->data, image_size_bytes_);
+
+      camera::tFrameMetaData metaData;
+      if(!frame->getMetaData(metaData))
+      {
+        printf( "ERROR: Metadata invalid\n");
+      }
+
+      new_frame.exposure_time_ns_ = metaData.actualFrameExposureTime;
+
+      float correction = static_cast<float>(new_frame.exposure_time_ns_)/2.f;
+      new_frame.timestamp_coe_ = new_frame.timestamp_ + static_cast<int64_t>(correction);
+      frame_queue_[ frame_q_write_index_ ] = new_frame;
+
+
+      frame_q_write_index_++;
+      frame_q_write_index_ = (frame_q_write_index_ >= camera_config_ptr_->num_image_buffers )?0:frame_q_write_index_;
+
+      // notify the caller who is waiting on a frame.
+      frame_cv_.notify_all();
+    }
+
+    // update the frame stats.
+    uint64_t timestamp_nsecs = frame->timeStamp;
+    uint32_t dt_nsecs = timestamp_nsecs - timestamp_last_nsecs_;
+    timestamp_last_nsecs_ = timestamp_nsecs;
+    fps_avg_ = ((fps_avg_ * old_frame_id) + (1e9 / dt_nsecs)) / (next_frame_id_);
+  }
+  else{
+    printf( "WARN: Got duplicate image frame at timestamp: %lld frame_id: %lld\n", frame->timeStamp, next_frame_id_ );
+  }
+}
+
+void Snapdragon::CameraManager::onVideoFrame(camera::ICameraSubscriberFrame* frame)
+{
+  // Should only get here if video is requested, which is not supported
+  printf("WARN: Got video frame from subscriber!\n");
+}
+
+#endif
 

@@ -42,6 +42,11 @@
 // camera API Headers for the Snapdragon flight.
 #include "camera.h"
 #include "camera_parameters.h"
+#ifdef QC_SOC_TARGET_APQ8096
+#include "camera_subscriber.h"
+#include "camera_subscriber_meta_data.h"
+#endif
+
 
 // Local
 #include "SnapdragonCameraTypes.hpp"
@@ -52,12 +57,16 @@ namespace Snapdragon {
 
 //Class to support the OV7251 Camera.
 class Snapdragon::CameraManager : public camera::ICameraListener
+#ifdef QC_SOC_TARGET_APQ8096
+,public camera::ICameraSubsriberListener
+#endif
 {
 public:
 
   struct CameraFrameType
   {
     camera::ICameraFrame * frame_;
+    uint8_t data_[IMAGE_DATA_BUFFER_SIZE];
     int64_t timestamp_;
     int64_t timestamp_coe_;
     int64_t exposure_time_ns_;
@@ -66,6 +75,7 @@ public:
     CameraFrameType()
     {
       frame_ = nullptr;
+      std::memset(data_, 0, sizeof(uint8_t)*IMAGE_DATA_BUFFER_SIZE);
       timestamp_ = -1;
       timestamp_coe_ = -1;
       exposure_time_ns_ = -1;
@@ -278,6 +288,19 @@ public:
   int32_t GetExposureTimeUs(int64_t frame_id, float* exposure_time_us);
 
   /**
+   * Retrieves the duration of the exposure (in nanoseconds) for the specified
+   * frame
+   * @param
+   *   frame_id = requested frame ID
+   *   exposure_time_ns = ptr to the duration, filled by the function
+   * @returns int32_t
+   *   0 = success
+   *   -1 = failed to find the requested frame
+   */
+  int32_t GetExposureTime(int64_t frame_id, uint64_t* exposure_time_ns);
+
+
+  /**
    * Retrieves the exposure setting
    * @returns float
    *   exposure setting, as a value from 0.0 to 1.0
@@ -306,6 +329,13 @@ public:
   virtual void onPreviewFrame(camera::ICameraFrame* frame);
   virtual void onVideoFrame(camera::ICameraFrame* frame);
 
+#ifdef QC_SOC_TARGET_APQ8096
+  // interface functions from the camera::ICameraSubscriberListener
+  virtual void onError(camera::SUBSCRIBER_STATUS status);
+  virtual void onPreviewFrame(camera::ICameraSubscriberFrame* frame);
+  virtual void onVideoFrame(camera::ICameraSubscriberFrame* frame);
+#endif
+
 private: // private class methods.
 
   void UpdateGainAndExposure();
@@ -326,6 +356,9 @@ private: // class private data members.
   Snapdragon::CameraConfig*     camera_config_ptr_;
 
   camera::ICameraDevice* camera_ptr_;
+#ifdef QC_SOC_TARGET_APQ8096
+  camera::ICameraSubscriber* camera_sub_ptr_;
+#endif
   camera::CameraParams   params_;
   camera::ImageSize      preview_size_;
 

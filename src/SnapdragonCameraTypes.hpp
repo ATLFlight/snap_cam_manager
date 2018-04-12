@@ -60,6 +60,7 @@ namespace Snapdragon {
   static const int16_t  DEFAULT_GAIN_CHANGE_THRESHOLD = 0;
   static const uint16_t DEFAULT_IMAGE_BUFFER_SIZE = 5; // if the image buffers are > max, then the camera pipeline can be stalled.
   static const uint16_t MAX_IMAGE_BUFFER_SIZE = 6;
+  static const uint32_t IMAGE_DATA_BUFFER_SIZE = 1000000; // staticly allocated memory for subscriber frame
 
   /**
    * Enum for the camera types. The numbers are listed a documented in the
@@ -124,6 +125,7 @@ namespace Snapdragon {
       exposure_change_threshold     = DEFAULT_EXPOSURE_CHANGE_THRESHOLD;
       gain_change_threshold         = DEFAULT_GAIN_CHANGE_THRESHOLD;
       num_image_buffers             = DEFAULT_IMAGE_BUFFER_SIZE;
+      is_cam_master                 = true;
     }
 
     bool       verbose;
@@ -143,6 +145,7 @@ namespace Snapdragon {
     int16_t    exposure_change_threshold;
     int16_t    gain_change_threshold;
     uint16_t   num_image_buffers;
+    bool       is_cam_master;
   };
 
   /**
