@@ -70,7 +70,15 @@ int32_t Snapdragon::FindCamera( Snapdragon::CameraType cam_type, int32_t* camera
 #ifdef QC_SOC_TARGET_APQ8096
 int32_t Snapdragon::FindCamera( Snapdragon::CameraType cam_type, int32_t* camera_id )
 {
-  *camera_id = static_cast<int>(cam_type);
+  if( cam_type == Snapdragon::CameraType::RIGHT_STEREO )
+  {
+    *camera_id = static_cast<int>(Snapdragon::CameraType::STEREO);
+  }
+  else
+  {
+    *camera_id = static_cast<int>(cam_type);
+  }
+  
   return 0;
 }
 #endif

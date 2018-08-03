@@ -51,6 +51,12 @@ Snapdragon::CameraManager::CameraManager( Snapdragon::CameraParameters* params_p
   if( camera_config_ptr_->cam_type == CameraType::STEREO ) {
     preview_size_.width = camera_config_ptr_->pixel_width * 2;
   }
+#ifdef QC_SOC_TARGET_APQ8096
+  // for 8096, get full stereo and just copy half the frame
+  else if( camera_config_ptr_->cam_type == CameraType::RIGHT_STEREO ) {
+    preview_size_.width = camera_config_ptr_->pixel_width * 2;
+  }
+#endif
   else {
     preview_size_.width = camera_config_ptr_->pixel_width;
   }
@@ -82,6 +88,7 @@ Snapdragon::CameraManager::CameraManager( Snapdragon::CameraParameters* params_p
 int32_t Snapdragon::CameraManager::Initialize(){
   if (!initialized_) {
     int32_t cam_id;
+
     if( Snapdragon::FindCamera( camera_config_ptr_->cam_type, &cam_id ) != 0 ) {
       printf( "ERROR: Cannot Find Camera Id for Type: %d\n", camera_config_ptr_->cam_type );
       return -1;
@@ -212,7 +219,6 @@ int32_t Snapdragon::CameraManager::Initialize(){
         printf("ERROR: could not open camera subscriber for cam id %d\n", cam_id);
         return -1;
       }
-
       camera_sub_ptr_->addListener(this);
 #else
       printf("8074 does not support ICameraSubscriber");
@@ -475,6 +481,18 @@ int32_t Snapdragon::CameraManager::GetImageData( int64_t frame_id,
       memcpy( image_data_right + i * camera_config_ptr_->pixel_width, src_right, camera_config_ptr_->pixel_width);
     }
   }
+#ifdef QC_SOC_TARGET_APQ8096
+  else if( camera_config_ptr_->cam_type == CameraType::RIGHT_STEREO ) {
+    for( int i = 0; i < camera_config_ptr_->pixel_height; ++i ) {
+      uint8_t* src_left = reinterpret_cast<uint8_t*>(
+          frame_queue_[frame_q_read_index_].frame_->data + i * camera_config_ptr_->pixel_width * 2 );
+      uint8_t* src_right = reinterpret_cast<uint8_t*>(
+          src_left + camera_config_ptr_->pixel_width );
+      //memcpy( image_data + i * camera_config_ptr_->pixel_width, src_left, camera_config_ptr_->pixel_width );
+      memcpy( image_data + i * camera_config_ptr_->pixel_width, src_right, camera_config_ptr_->pixel_width);
+    }
+  }
+#endif // QC_SOC_TARGET_APQ8096
   //monocular image data
   else {
     if (camera_config_ptr_->is_cam_master) {

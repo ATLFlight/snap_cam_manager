@@ -80,7 +80,7 @@ namespace Snapdragon {
     HIRES = 0,
     OPTIC_FLOW = 1,
     STEREO = 2,
-    RIGHT_STEREO = -1,
+    RIGHT_STEREO = 3,
 #endif
   };
 
