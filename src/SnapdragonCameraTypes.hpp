@@ -76,12 +76,21 @@ namespace Snapdragon {
     STEREO = 3,
 #endif
 #ifdef QC_SOC_TARGET_APQ8096
+#ifdef QC_TOF_BUILD
+    UNKNOWN = -1,
+    HIRES = 2,
+    OPTIC_FLOW = 0,
+    STEREO = 1,
+    RIGHT_STEREO = 3,
+    TOF = 4,
+#else
     UNKNOWN = -1,
     HIRES = 0,
     OPTIC_FLOW = 1,
     STEREO = 2,
     RIGHT_STEREO = 3,
-#endif
+#endif // QC_TOF_BUILD
+#endif // QC_SOC_TARGET_APQ8096
   };
 
   /**
