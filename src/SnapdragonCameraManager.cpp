@@ -88,12 +88,12 @@ Snapdragon::CameraManager::CameraManager( Snapdragon::CameraParameters* params_p
 int32_t Snapdragon::CameraManager::Initialize(){
   if (!initialized_) {
     int32_t cam_id;
-printf( "%s %d\n", __FILE__, __LINE__ );
+
     if( Snapdragon::FindCamera( camera_config_ptr_->cam_type, &cam_id ) != 0 ) {
       printf( "ERROR: Cannot Find Camera Id for Type: %d\n", camera_config_ptr_->cam_type );
       return -1;
     }
-printf( "%s %d\n", __FILE__, __LINE__ );
+
     if (camera_config_ptr_->is_cam_master)
     {
       int ret = camera::ICameraDevice::createInstance(cam_id, &camera_ptr_);
@@ -104,9 +104,9 @@ printf( "%s %d\n", __FILE__, __LINE__ );
       else {
         printf("Opened camera %d Type: %d\n", cam_id, camera_config_ptr_->cam_type );
       }
-printf( "%s %d\n", __FILE__, __LINE__ );
+
       camera_ptr_->addListener(this);
-printf( "%s %d\n", __FILE__, __LINE__ );
+
       ret = params_.init(camera_ptr_);
       if (ret != 0) {
         printf("ERROR: Failed to initialize camera parameters.\n");
