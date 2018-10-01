@@ -78,7 +78,10 @@ int32_t Snapdragon::FindCamera( Snapdragon::CameraType cam_type, int32_t* camera
   {
     *camera_id = static_cast<int>(cam_type);
   }
-  
+
+  printf( "%s %d Type Requested: %d ID ReceiveD: %d\n",
+     __FILE__, __LINE__, (int)cam_type, *camera_id );
+
   return 0;
 }
 #endif
