@@ -9,6 +9,11 @@ cmake ..
 make
 ```
 
+If you are using a QFlight Pro board (8096), you will build the code inside your development docker.  You will also have to provide the following cmake variable:
+
+``` cmake -DQC_SOC_TARGET=APQ8096```
+
+
 ### Requirements
 Ensure that the Snapdragon Flight libcamera headers are present on target before attempting to build, which should be found at `/usr/include/camera.h` and `/usr/include/camera_parameters.h`.
 
