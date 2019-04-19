@@ -336,9 +336,9 @@ public:
   virtual void onVideoFrame(camera::ICameraSubscriberFrame* frame);
 #endif
 
-private: // private class methods.
-
   void UpdateGainAndExposure();
+
+private: // private class methods.
 
   int32_t GetImageData(int64_t frame_id, uint64_t* timestamp_ns,
       uint32_t size, uint32_t* used,
@@ -348,7 +348,6 @@ private: // private class methods.
 
   bool HasFrameArrived(int64_t frame_id);
 
-private: // class private data members.
   bool initialized_;
   bool running_;
 
